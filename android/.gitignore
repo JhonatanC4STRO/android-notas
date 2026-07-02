@@ -8,3 +8,8 @@
 **/.externalNativeBuild/
 **/.cxx/
 *.apk
+
+# Firma de release: nunca se sube (repo publico).
+keystore.properties
+*.keystore
+*.jks
