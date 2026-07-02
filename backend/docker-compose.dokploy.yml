@@ -7,7 +7,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     # wal_level=logical es requisito de PowerSync para leer los cambios de
-    # Postgres via replicacion logica (CLAUDE.md, seccion 2.2).
+    # Postgres via replicacion logica (CLAUDE.md, seccion 2.2). SSL habilitado
+    # con certificado autofirmado porque PowerSync Cloud exige sslmode
+    # verify-ca/verify-full al conectar por internet (no acepta disable/prefer).
+    # El certificado se genera una vez a mano dentro del volumen persistente
+    # (ver README.md / historial de configuracion del VPS).
     command:
       - "postgres"
       - "-c"
@@ -16,6 +20,12 @@ services:
       - "max_wal_senders=10"
       - "-c"
       - "max_replication_slots=10"
+      - "-c"
+      - "ssl=on"
+      - "-c"
+      - "ssl_cert_file=/var/lib/postgresql/data/server.crt"
+      - "-c"
+      - "ssl_key_file=/var/lib/postgresql/data/server.key"
     # Publicado directo al host: PowerSync Cloud necesita TCP crudo, no HTTP,
     # asi que no puede pasar por Traefik como el backend.
     ports:
