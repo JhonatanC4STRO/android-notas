@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # wal_level=logical es requisito de PowerSync para leer los cambios de
+    # Postgres via replicacion logica (CLAUDE.md, seccion 2.2).
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "max_wal_senders=10"
+      - "-c"
+      - "max_replication_slots=10"
+    # Publicado directo al host: PowerSync Cloud necesita TCP crudo, no HTTP,
+    # asi que no puede pasar por Traefik como el backend.
+    ports:
+      - "5432:5432"
+    volumes:
+      - notas_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      PORT: 3000
+      JWT_KID: ${JWT_KID}
+      JWT_PRIVATE_KEY_BASE64: ${JWT_PRIVATE_KEY_BASE64}
+      JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64}
+      POWERSYNC_JWT_ISSUER: ${POWERSYNC_JWT_ISSUER}
+      POWERSYNC_JWT_AUDIENCE: ${POWERSYNC_JWT_AUDIENCE}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Sin "ports": Dokploy/Traefik lo expone via dominio+HTTPS apuntando
+    # al puerto interno 3000 del contenedor (se configura en su UI).
+
+volumes:
+  notas_postgres_data:

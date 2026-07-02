@@ -1,0 +1,14 @@
+version: 2
+
+tunnels:
+  # Postgres: se referencia por el nombre del servicio de docker-compose y
+  # su puerto INTERNO (5432), no el puerto publicado en el host.
+  postgres:
+    proto: tcp
+    addr: postgres:5432
+
+  # Backend Express (para exponer GET /auth/keys al JWKS de PowerSync).
+  # host.docker.internal resuelve al equipo Windows donde corre `npm run dev`.
+  backend:
+    proto: http
+    addr: host.docker.internal:3000

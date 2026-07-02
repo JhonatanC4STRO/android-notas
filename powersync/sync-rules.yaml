@@ -1,0 +1,13 @@
+# Sync rules de PowerSync (CLAUDE.md, seccion 2.2 y 3.4):
+# un bucket por usuario, cada dispositivo solo descarga SUS propias notas.
+#
+# request.user_id() se resuelve a partir del claim `sub` del powersyncToken
+# (JWT emitido por nuestro backend en /auth/login y /auth/token).
+
+bucket_definitions:
+  user_notas:
+    parameters: SELECT request.user_id() as user_id
+    data:
+      - SELECT id, user_id, titulo, contenido, updated_at, deleted
+        FROM notas
+        WHERE user_id = bucket.user_id

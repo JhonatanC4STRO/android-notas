@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: notas_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    # wal_level=logical es requisito de PowerSync para leer los cambios
+    # de Postgres via replicacion logica (ver CLAUDE.md, seccion 2.2).
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "max_wal_senders=10"
+      - "-c"
+      - "max_replication_slots=10"
+    volumes:
+      - notas_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Tunel de desarrollo: expone Postgres (TCP) y el backend (HTTP, para
+  # /auth/keys) a internet, ya que PowerSync Cloud no puede alcanzar
+  # localhost. Requiere NGROK_AUTHTOKEN en .env (cuenta gratuita en
+  # ngrok.com). Las URLs publicas asignadas se ven en http://localhost:4040
+  # y cambian cada vez que se reinicia este servicio (plan free).
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: notas_ngrok
+    restart: unless-stopped
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml:ro
+    command: ["start", "--all", "--config", "/etc/ngrok.yml"]
+    ports:
+      - "4040:4040"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  notas_postgres_data:

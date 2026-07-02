@@ -1,0 +1,57 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelos definidos exactamente segun CLAUDE.md, seccion 4.
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  devices Device[]
+  notas   Nota[]
+
+  @@map("users")
+}
+
+model Device {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  deviceId  String   @unique @map("device_id")
+  estado    String   @default("activo")
+  lastSeen  DateTime @default(now()) @map("last_seen")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Hash del refreshToken vigente para este dispositivo (nunca se guarda en texto plano).
+  refreshTokenHash      String?   @map("refresh_token_hash")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("devices")
+}
+
+model Nota {
+  id        String  @id @default(uuid())
+  userId    String  @map("user_id")
+  titulo    String
+  contenido String
+  updatedAt BigInt  @map("updated_at")
+  deleted   Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notas")
+}
