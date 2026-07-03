@@ -32,8 +32,7 @@ android {
         // contra tu propio backend, cambia esto a "http://10.0.2.2:3000"
         // (asi es como el emulador de Android alcanza "localhost" del host).
         buildConfigField("String", "BACKEND_URL", "\"https://notasapi.shona.lat\"")
-        // Placeholder hasta terminar la configuracion del dashboard de PowerSync (Paso 5).
-        buildConfigField("String", "POWERSYNC_URL", "\"https://TODO-configura-tu-instancia.powersync.journeyapps.com\"")
+        buildConfigField("String", "POWERSYNC_URL", "\"https://6a46e95d49dca2d8a4165c48.powersync.journeyapps.com\"")
     }
 
     signingConfigs {
