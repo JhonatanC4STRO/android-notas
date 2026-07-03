@@ -18,9 +18,15 @@ ni el servidor Node en su propia máquina.
    - Email: `test@test.com`
    - Contraseña: `123456`
 
-Por defecto, `BuildConfig.BACKEND_URL` (definido en `android/app/build.gradle.kts`)
-ya apunta al backend compartido en `https://notasapi.shona.lat`. No necesitas
-cambiar nada para esto.
+Por defecto, `BuildConfig.BACKEND_URL` y `BuildConfig.POWERSYNC_URL` (definidos
+en `android/app/build.gradle.kts`) ya apuntan al backend y a la instancia de
+PowerSync Cloud compartidos. No necesitas cambiar nada para esto — la
+sincronización real (no solo el login) ya funciona con esta configuración por
+defecto: crea una nota, debería verse el ícono ☁️ verde en la barra superior
+una vez sincronice.
+
+Plan de pruebas manuales completo (offline, conflictos, expulsión de
+dispositivos, etc.) en [TESTING.md](TESTING.md).
 
 > ⚠️ `android/gradlew.bat` puede faltar en tu copia local si tu antivirus lo puso
 > en cuarentena al clonar (le pasó a Windows Defender en la máquina original).
@@ -72,24 +78,42 @@ Ver `backend/.env.example` para la plantilla completa.
   autenticación con registro de dispositivos, renovación de JWT de PowerSync, y
   el endpoint de escritura (`/api/upload-data`) con resolución de conflictos
   Last-Write-Wins.
-- **`powersync/`** — sync rules y SQL de configuración para PowerSync Cloud.
+- **`powersync/`** — sync rules (formato "Sync Streams", ya desplegado en el
+  dashboard) y SQL de configuración para PowerSync Cloud.
 
 Detalle completo de reglas de negocio (límite de dispositivos, tombstones,
 LWW, etc.) en [CLAUDE.md](CLAUDE.md).
 
-## Backend compartido (VPS)
+## Infraestructura compartida (VPS + PowerSync Cloud)
 
-El backend de `https://notasapi.shona.lat` corre en un VPS compartido (vía
-Dokploy), junto con Postgres (expuesto directo, sin túneles, para que
-PowerSync Cloud pueda conectarse por replicación lógica).
+- **Backend + Postgres**: corren en un VPS compartido (vía Dokploy) en
+  `https://notasapi.shona.lat`. Postgres tiene SSL habilitado (certificado
+  autofirmado) porque PowerSync Cloud exige `sslmode=verify-ca` o superior
+  para conexiones públicas — no acepta `disable`/`prefer`.
+- **PowerSync Cloud**: instancia ya conectada a ese Postgres, con las Sync
+  Streams de `powersync/sync-rules.yaml` desplegadas y el Client Auth (JWKS)
+  apuntando a `https://notasapi.shona.lat/auth/keys`.
 
-**Las credenciales de ese servidor (SSH, contraseña de Postgres, llaves JWT)
-no están en este repositorio a propósito** — es un servidor compartido con
-otros proyectos, y este repo es público. Si necesitas acceso para redesplegar,
-ver logs, o cambiar configuración del backend compartido, pide las
-credenciales directamente al dueño del proyecto.
+**Las credenciales (SSH del VPS, contraseña de Postgres, llaves JWT, acceso al
+dashboard de PowerSync) no están en este repositorio a propósito** — el VPS es
+compartido con otros proyectos y este repo es público. Si necesitas acceso
+para redesplegar, ver logs, o cambiar la configuración, pide las credenciales
+directamente al dueño del proyecto.
 
 Para redesplegar cambios del backend: cualquier push a `main` en este repo
 puede configurarse para redeploy automático en Dokploy (Provider → GitHub →
 `./backend/docker-compose.dokploy.yml`), o se puede disparar manualmente desde
 su dashboard.
+
+## Generar el APK de release
+
+```bash
+cd android
+java -jar gradle/wrapper/gradle-wrapper.jar assembleRelease
+```
+
+Requiere `android/keystore.properties` y el keystore que referencia (ambos
+gitignored — pídelos al dueño del proyecto, o genera los tuyos propios si es
+para tu propia firma). Sin ese archivo, `assembleRelease` genera un APK sin
+firmar. El resultado queda en
+`android/app/build/outputs/apk/release/app-release.apk`.
